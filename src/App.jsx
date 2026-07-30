@@ -1,360 +1,66 @@
-import React, { Suspense, createRef, useEffect, useMemo, useRef, useState } from 'react'
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { Environment, ContactShadows, OrbitControls, Html, Text } from '@react-three/drei'
-import { Physics, useBox, usePlane, useRaycastVehicle } from '@react-three/cannon'
-import { Vector3, Quaternion } from 'three'
+import { useEffect, useState } from 'react'
 
-const MODEL_URL = 'https://vazxmixjsiawhamofees.supabase.co/storage/v1/object/public/models/jeep/model.gltf'
+const copy = {
+  de: {
+    tagline: 'Schnelle Verbindung, sichere Installation',
+    category: 'Glasfaser · Bau · Netzwerk',
+    heading: 'Erdarbeiten und Glasfaserinstallationen aus einer Hand',
+    description: 'Wir realisieren optische Netze, sichere Anschlussarbeiten und zuverlässige Lösungen für Wohn- und Geschäftskunden.',
+    primaryAction: 'Angebot anfordern', servicesLabel: 'Leistungen', servicesTitle: 'Unsere Kernkompetenzen',
+    services: [['⚡', 'Trassenarbeiten', 'Präziser Tiefbau und sichere Vorbereitung der Kabeltrasse.'], ['⌁', 'Glasfaserverlegung', 'Professionelle Verlegung von Glasfaserkabeln für stabile Anschlüsse.'], ['⚙', 'Anschlusstechnik', 'Fachgerechte Montage von Anschlusskästen und Übergabestellen.']],
+    aboutLabel: 'Über uns', aboutTitle: 'Erfahrung, Qualität und ein sicherer Anschluss', aboutText: 'Unser Team verbindet Bauexpertise mit modernen Telekommunikationsstandards – für eine zuverlässige Verbindung vom ersten Spatenstich bis zur Übergabe.',
+    benefits: ['Präziser Tiefbau und Trassenplanung', 'Glasfaserverlegung nach modernem Standard', 'Abnahme und Endprüfung vor Übergabe'],
+    contactLabel: 'Kontakt', contactTitle: 'Kostenlose Beurteilung vereinbaren', contactText: 'Kontaktieren Sie uns für Ihre nächste Glasfaserinstallation.',
+    name: 'Ihr Name', message: 'Kurze Beschreibung der Arbeiten', submit: 'Nachricht senden', footer: '© 2026 NEA Baukonzepte GmbH. Alle Rechte vorbehalten.', sent: 'Ihre Nachricht wurde vorbereitet.', locked: 'Neue Nachrichten sind auf diesem Gerät in', lockedEnd: 'wieder möglich.'
+  },
+  sr: {
+    tagline: 'Brza veza, sigurna instalacija',
+    category: 'Optika · Izgradnja · Mreža', heading: 'Iskop i instalacija optičkih mreža na jednom mjestu', description: 'Realizujemo optičke mreže, sigurne priključke i pouzdana rješenja za privatne i poslovne objekte.', primaryAction: 'Zatraži ponudu', servicesLabel: 'Usluge', servicesTitle: 'Radovi koje radimo',
+    services: [['⚡', 'Iskop i priprema trase', 'Precizno iskopavanje i zaštita terena prije polaganja kablova.'], ['⌁', 'Polaganje optike', 'Profesionalna instalacija optičkog kabla i priključaka.'], ['⚙', 'Montaža priključaka', 'Postavljanje priključnih kutija i završnih konekcija.']],
+    aboutLabel: 'O nama', aboutTitle: 'Iskustvo, kvalitet i siguran priključak', aboutText: 'Naš tim spaja građevinsko iskustvo i moderne telekom standarde – za pouzdanu vezu od prvog iskopa do predaje radova.', benefits: ['Iskop i zaštita trase', 'Polaganje kablova i montaža priključaka', 'Testiranje veze prije predaje radova'],
+    contactLabel: 'Kontakt', contactTitle: 'Dogovorite besplatnu procjenu', contactText: 'Javite nam se za brzu i profesionalnu realizaciju.', name: 'Vaše ime', message: 'Kratak opis radova', submit: 'Pošalji poruku', footer: '© 2026 NEA Baukonzepte GmbH. Sva prava zadržana.', sent: 'Poruka je spremna za slanje.', locked: 'Novo slanje sa ovog preglednika je dostupno za', lockedEnd: '.'
+  }
+}
 
-function useControls() {
-  const [controls, setControls] = useState({ forward: false, backward: false, left: false, right: false, brake: false })
+export default function RestoredApp() {
+  const [language, setLanguage] = useState('de')
+  const [theme, setTheme] = useState('dark')
+  const [lockExpiresAt, setLockExpiresAt] = useState(0)
+  const [now, setNow] = useState(Date.now())
+  const text = copy[language]
 
+  useEffect(() => { document.documentElement.dataset.theme = theme }, [theme])
   useEffect(() => {
-    const update = (key, value) => {
-      setControls((prev) => ({ ...prev, [key]: value }))
-    }
-
-    const handleKeyDown = (event) => {
-      const key = event.key.toLowerCase()
-      if (key === 'arrowup' || key === 'w') update('forward', true)
-      if (key === 'arrowdown' || key === 's') update('backward', true)
-      if (key === 'arrowleft' || key === 'a') update('left', true)
-      if (key === 'arrowright' || key === 'd') update('right', true)
-      if (key === ' ' || key === 'shift') update('brake', true)
-    }
-
-    const handleKeyUp = (event) => {
-      const key = event.key.toLowerCase()
-      if (key === 'arrowup' || key === 'w') update('forward', false)
-      if (key === 'arrowdown' || key === 's') update('backward', false)
-      if (key === 'arrowleft' || key === 'a') update('left', false)
-      if (key === 'arrowright' || key === 'd') update('right', false)
-      if (key === ' ' || key === 'shift') update('brake', false)
-    }
-
-    window.addEventListener('keydown', handleKeyDown)
-    window.addEventListener('keyup', handleKeyUp)
-
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown)
-      window.removeEventListener('keyup', handleKeyUp)
-    }
+    setLockExpiresAt(Number(localStorage.getItem('nea-contact-lock-expires-at')) || 0)
+    const timer = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(timer)
   }, [])
 
-  return controls
+  const sendMail = (event) => {
+    event.preventDefault()
+    if (lockExpiresAt > Date.now()) return
+    const data = new FormData(event.currentTarget)
+    const subject = language === 'de' ? 'Kontaktanfrage über die Website' : 'Upit preko web stranice'
+    const body = `Name: ${data.get('name')}\n\n${data.get('message')}`
+    const expires = Date.now() + 60 * 60 * 1000
+    localStorage.setItem('nea-contact-lock-expires-at', String(expires))
+    setLockExpiresAt(expires)
+    window.location.href = `mailto:info@neabaukonzepte.de?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`
+  }
+
+  const locked = lockExpiresAt > now
+  const remaining = Math.max(0, Math.ceil((lockExpiresAt - now) / 1000))
+  const clock = `${String(Math.floor(remaining / 60)).padStart(2, '0')}:${String(remaining % 60).padStart(2, '0')}`
+  const requestQuote = () => { window.location.href = `mailto:info@neabaukonzepte.de?subject=${encodeURIComponent(language === 'de' ? 'Anfrage für ein Angebot' : 'Upit za ponudu')}` }
+
+  return <div className="site-shell">
+    <header className="hero"><nav className="toolbar container" aria-label="Glavna navigacija">
+      <div className="brand"><div><strong>NEA <em>Baukonzepte</em></strong><span>{text.tagline}</span></div></div>
+      <div className="controls"><div className="language-control" aria-label="Izbor jezika">{['de', 'sr'].map(code => <button type="button" className={language === code ? 'active' : ''} onClick={() => setLanguage(code)} key={code}>{code.toUpperCase()}</button>)}</div><button className="theme-button" type="button" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')} aria-label="Promijeni temu">{theme === 'dark' ? '☀' : '☾'}</button></div>
+    </nav><div className="hero-content container"><p className="eyebrow">{text.category}</p><h1>{text.heading}</h1><p className="hero-description">{text.description}</p><button className="button button-primary" type="button" onClick={requestQuote}>{text.primaryAction}</button><div className="hero-image" role="img" aria-label="Glasfaserinstallation" /></div></header>
+    <main className="container main-content"><section><div className="section-heading"><p className="eyebrow">{text.servicesLabel}</p><h2>{text.servicesTitle}</h2></div><div className="service-grid">{text.services.map(([icon, title, description]) => <article className="card service-card" key={title}><span className="service-icon">{icon}</span><h3>{title}</h3><p>{description}</p></article>)}</div></section>
+    <section className="about-section"><div className="about-copy"><p className="eyebrow">{text.aboutLabel}</p><h2>{text.aboutTitle}</h2><p>{text.aboutText}</p></div><aside className="card benefits-card"><h3>{language === 'de' ? 'Warum wir?' : 'Zašto nas izabrati?'}</h3><ul>{text.benefits.map(item => <li key={item}>✓ {item}</li>)}</ul></aside></section>
+    <section><div className="section-heading"><p className="eyebrow">{text.contactLabel}</p><h2>{text.contactTitle}</h2></div><div className="contact-grid"><article className="card contact-card"><h3>{language === 'de' ? 'Kontaktinformationen' : 'Kontakt informacije'}</h3><p>{text.contactText}</p><a href="mailto:info@neabaukonzepte.de">✉&nbsp; info@neabaukonzepte.de</a><a href="https://www.google.com/maps/search/Waldstr.+168,+63071+Offenbach+Main" target="_blank" rel="noreferrer">⌖&nbsp; Waldstr. 168, 63071 Offenbach Main</a></article><form className={`card contact-form ${locked ? 'form-locked' : ''}`} onSubmit={sendMail}>{locked ? <div className="send-success" role="status"><span className="success-mark">✓</span><strong>{text.sent}</strong><p>{text.locked} <b>{clock}</b> {text.lockedEnd}</p></div> : <><label>{text.name}<input name="name" type="text" placeholder={text.name} required /></label><label>{text.message}<textarea name="message" rows="5" placeholder={text.message} required /></label><button className="button button-primary" type="submit">{text.submit}</button></>}</form></div></section></main>
+    <footer><p>{text.footer}</p></footer>
+  </div>
 }
-
-function ThirdPersonCamera({ targetRef }) {
-  const { camera } = useThree()
-  const idealPosition = useMemo(() => new Vector3(0, 2.5, -8), [])
-  const lookAtPosition = useMemo(() => new Vector3(), [])
-  const tempVec = useMemo(() => new Vector3(), [])
-  const tempQuaternion = useMemo(() => new Quaternion(), [])
-
-  useFrame(() => {
-    if (!targetRef?.current) return
-    targetRef.current.getWorldPosition(lookAtPosition)
-    targetRef.current.getWorldQuaternion(tempQuaternion)
-    tempVec.copy(idealPosition).applyQuaternion(tempQuaternion).add(lookAtPosition)
-    camera.position.lerp(tempVec, 0.08)
-    camera.lookAt(lookAtPosition)
-  })
-
-  return null
-}
-
-function WorldBoundary({ position, rotation, args }) {
-  const [ref] = useBox(() => ({ args, position, rotation, type: 'Static' }))
-  return (
-    <mesh ref={ref} position={position} rotation={rotation} receiveShadow castShadow>
-      <boxGeometry args={args} />
-      <meshStandardMaterial color="#202530" />
-    </mesh>
-  )
-}
-
-function StaticBuilding({ position, args, label }) {
-  const [ref] = useBox(() => ({ args, position, type: 'Static' }))
-  return (
-    <group>
-      <mesh ref={ref} position={position} castShadow receiveShadow>
-        <boxGeometry args={args} />
-        <meshStandardMaterial color="#2f435a" metalness={0.05} roughness={0.85} />
-      </mesh>
-      <Text position={[position[0], position[1] + args[1] / 2 + 0.4, position[2]]} fontSize={0.65} color="#ffffff" anchorX="center" anchorY="middle">
-        {label}
-      </Text>
-    </group>
-  )
-}
-
-function ParkingSign({ position, label }) {
-  const [postRef] = useBox(() => ({ args: [0.18, 2.2, 0.18], position, type: 'Static' }))
-  const [boardRef] = useBox(() => ({ args: [1.4, 0.56, 0.12], position: [position[0], position[1] + 2.1, position[2]], type: 'Static' }))
-
-  return (
-    <group>
-      <mesh ref={postRef} castShadow receiveShadow>
-        <boxGeometry args={[0.18, 2.2, 0.18]} />
-        <meshStandardMaterial color="#888" />
-      </mesh>
-      <mesh ref={boardRef} castShadow receiveShadow>
-        <boxGeometry args={[1.4, 0.56, 0.12]} />
-        <meshStandardMaterial color="#fcba03" emissive="#fb9f00" emissiveIntensity={0.18} />
-      </mesh>
-      <Text position={[position[0], position[1] + 2.1, position[2] + 0.14]} fontSize={0.27} color="#111111" anchorX="center" anchorY="middle">
-        {label}
-      </Text>
-    </group>
-  )
-}
-
-function ParkingZone({ center, radius }) {
-  return (
-    <group>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[center[0], 0.03, center[2]]} receiveShadow>
-        <circleGeometry args={[radius, 64]} />
-        <meshStandardMaterial color="#1d4ed8" opacity={0.35} transparent />
-      </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[center[0], 0.04, center[2]]} receiveShadow>
-        <ringGeometry args={[radius - 0.35, radius - 0.1, 64]} />
-        <meshStandardMaterial color="#ffffff" />
-      </mesh>
-    </group>
-  )
-}
-
-function GroundPlane() {
-  const [ref] = usePlane(() => ({ rotation: [-Math.PI / 2, 0, 0], position: [0, 0, 0], material: { friction: 0.95, restitution: 0.05 } }))
-  return (
-    <mesh ref={ref} rotation={[-Math.PI / 2, 0, 0]} receiveShadow>
-      <planeGeometry args={[80, 80]} />
-      <meshStandardMaterial color="#2b3140" roughness={0.92} metalness={0.03} />
-    </mesh>
-  )
-}
-
-function JeepFallbackModel() {
-  return (
-    <group>
-      <mesh position={[0, -0.2, 0]} castShadow receiveShadow>
-        <boxGeometry args={[2.4, 0.6, 4.2]} />
-        <meshStandardMaterial color="#e02424" metalness={0.3} roughness={0.4} />
-      </mesh>
-      <mesh position={[0, 0.45, -0.4]} castShadow receiveShadow>
-        <boxGeometry args={[1.8, 0.7, 2.4]} />
-        <meshStandardMaterial color="#c62828" metalness={0.25} roughness={0.45} />
-      </mesh>
-      <mesh position={[0, 0.88, 1.2]} rotation={[-0.2, 0, 0]} castShadow receiveShadow>
-        <planeGeometry args={[1.8, 0.9]} />
-        <meshStandardMaterial color="#8cf0ff" opacity={0.7} transparent roughness={0.25} />
-      </mesh>
-      {[[-1.05, 0.18, 1.55], [1.05, 0.18, 1.55], [-1.05, 0.18, -1.55], [1.05, 0.18, -1.55]].map((pos, index) => (
-        <mesh key={index} position={pos} rotation={[0, 0, Math.PI / 2]} castShadow receiveShadow>
-          <cylinderGeometry args={[0.37, 0.37, 0.6, 20]} />
-          <meshStandardMaterial color="#111111" metalness={0.1} roughness={0.85} />
-        </mesh>
-      ))}
-      <mesh position={[0.9, 0.35, -2.1]} rotation={[0, 0, 0]} castShadow receiveShadow>
-        <boxGeometry args={[0.25, 0.12, 0.14]} />
-        <meshStandardMaterial color="#222222" />
-      </mesh>
-      <mesh position={[-0.9, 0.35, -2.1]} rotation={[0, 0, 0]} castShadow receiveShadow>
-        <boxGeometry args={[0.25, 0.12, 0.14]} />
-        <meshStandardMaterial color="#222222" />
-      </mesh>
-    </group>
-  )
-}
-
-function Vehicle({ controls, onParkedChange, setTargetRef }) {
-  const chassisBody = useRef()
-  const wheelRefs = useRef([createRef(), createRef(), createRef(), createRef()])
-  const parkingCenter = useMemo(() => new Vector3(8, 0, -6), [])
-  const parkingRadius = 3.2
-
-  const wheelInfos = useMemo(
-    () => [
-      {
-        chassisConnectionPointLocal: [1, -0.32, 1.35],
-        directionLocal: [0, -1, 0],
-        axleLocal: [-1, 0, 0],
-        suspensionStiffness: 25,
-        suspensionRestLength: 0.35,
-        radius: 0.45,
-        frictionSlip: 6,
-        dampingRelaxation: 2.5,
-        dampingCompression: 4.4,
-        maxSuspensionForce: 100000,
-        rollInfluence: 0.02,
-      },
-      {
-        chassisConnectionPointLocal: [-1, -0.32, 1.35],
-        directionLocal: [0, -1, 0],
-        axleLocal: [-1, 0, 0],
-        suspensionStiffness: 25,
-        suspensionRestLength: 0.35,
-        radius: 0.45,
-        frictionSlip: 6,
-        dampingRelaxation: 2.5,
-        dampingCompression: 4.4,
-        maxSuspensionForce: 100000,
-        rollInfluence: 0.02,
-      },
-      {
-        chassisConnectionPointLocal: [1, -0.32, -1.6],
-        directionLocal: [0, -1, 0],
-        axleLocal: [-1, 0, 0],
-        suspensionStiffness: 25,
-        suspensionRestLength: 0.35,
-        radius: 0.45,
-        frictionSlip: 6,
-        dampingRelaxation: 2.5,
-        dampingCompression: 4.4,
-        maxSuspensionForce: 100000,
-        rollInfluence: 0.02,
-      },
-      {
-        chassisConnectionPointLocal: [-1, -0.32, -1.6],
-        directionLocal: [0, -1, 0],
-        axleLocal: [-1, 0, 0],
-        suspensionStiffness: 25,
-        suspensionRestLength: 0.35,
-        radius: 0.45,
-        frictionSlip: 6,
-        dampingRelaxation: 2.5,
-        dampingCompression: 4.4,
-        maxSuspensionForce: 100000,
-        rollInfluence: 0.02,
-      },
-    ],
-    []
-  )
-
-  const [chassisRef] = useBox(() => ({
-    mass: 1400,
-    args: [2.3, 0.6, 4.2],
-    position: [0, 0.9, 0],
-    rotation: [0, Math.PI, 0],
-    allowSleep: false,
-  }))
-
-  const [vehicleBody, vehicleApi] = useRaycastVehicle(() => ({
-    chassisBody: chassisRef,
-    wheelInfos,
-    wheels: wheelRefs.current,
-    indexForwardAxis: 2,
-    indexRightAxis: 0,
-    indexUpAxis: 1,
-  }))
-
-  useEffect(() => {
-    if (setTargetRef) setTargetRef(chassisRef)
-  }, [chassisRef, setTargetRef])
-
-  useEffect(() => {
-    const interval = setInterval(() => {
-      if (!chassisRef.current) return
-      const position = new Vector3()
-      chassisRef.current.getWorldPosition(position)
-      const inside = position.distanceTo(parkingCenter) < parkingRadius
-      onParkedChange?.(inside)
-    }, 100)
-    return () => clearInterval(interval)
-  }, [chassisRef, onParkedChange, parkingCenter, parkingRadius])
-
-  useFrame(() => {
-    if (!vehicleApi) return
-    const engineForce = 2000
-    const brakeForce = controls.brake ? 220 : 0
-    const steerValue = controls.left ? 0.45 : controls.right ? -0.45 : 0
-    const driveForce = controls.forward ? -engineForce : controls.backward ? engineForce : 0
-
-    vehicleApi.applyEngineForce(driveForce, 2)
-    vehicleApi.applyEngineForce(driveForce, 3)
-    vehicleApi.setBrake(brakeForce, 0)
-    vehicleApi.setBrake(brakeForce, 1)
-    vehicleApi.setBrake(brakeForce, 2)
-    vehicleApi.setBrake(brakeForce, 3)
-    vehicleApi.setSteeringValue(steerValue, 0)
-    vehicleApi.setSteeringValue(steerValue, 1)
-  })
-
-  return (
-    <group ref={chassisRef}>
-      <JeepFallbackModel />
-      {wheelInfos.map((wheel, index) => (
-        <mesh
-          key={index}
-          ref={wheelRefs.current[index]}
-          position={wheel.chassisConnectionPointLocal}
-          rotation={[0, 0, Math.PI / 2]}
-          visible={false}
-        >
-          <cylinderGeometry args={[wheel.radius, wheel.radius, 0.3, 16]} />
-          <meshStandardMaterial transparent opacity={0} />
-        </mesh>
-      ))}
-    </group>
-  )
-}
-
-function ParkingOverlay({ parked }) {
-  return (
-    <div style={{ position: 'absolute', top: 18, left: 18, color: '#f8fafc', fontFamily: 'Inter, system-ui, sans-serif', zIndex: 10 }}>
-      <div style={{ marginBottom: 12, padding: 14, borderRadius: 18, background: 'rgba(15, 23, 42, 0.8)', border: '1px solid rgba(148, 163, 184, 0.18)' }}>
-        <div style={{ fontSize: 14, opacity: 0.75, marginBottom: 6 }}>Controls: WASD / Arrows — hold Shift or Space to brake</div>
-        <div style={{ fontSize: 18, fontWeight: 700 }}>{parked ? '🚗 Parked in zone' : '🚦 Drive to the parking area'}</div>
-      </div>
-      {parked && (
-        <div style={{ maxWidth: 320, padding: 16, borderRadius: 18, background: 'rgba(15, 23, 42, 0.95)', border: '1px solid rgba(96, 165, 250, 0.24)' }}>
-          <div style={{ fontSize: 20, fontWeight: 700, marginBottom: 8 }}>Contacts</div>
-          <div style={{ fontSize: 14, lineHeight: 1.6, color: '#cbd5e1' }}>
-            <div>Email: hello@example.com</div>
-            <div>Phone: +381 60 1234 567</div>
-            <div>Location: Novi Sad, Serbia</div>
-          </div>
-        </div>
-      )}
-    </div>
-  )
-}
-
-export default function App() {
-  const controls = useControls()
-  const [parked, setParked] = useState(false)
-  const [targetRef, setTargetRef] = useState(null)
-
-  return (
-    <div style={{ width: '100vw', height: '100vh', position: 'relative', overflow: 'hidden' }}>
-      <ParkingOverlay parked={parked} />
-      <Canvas shadows dpr={[1, 2]} camera={{ position: [0, 4.5, 16], fov: 45 }}>
-        <color attach="background" args={['#ffffff']} />
-        <ambientLight intensity={0.75} />
-        <directionalLight position={[8, 16, 8]} intensity={1.2} castShadow shadow-mapSize-width={2048} shadow-mapSize-height={2048} />
-        <directionalLight position={[-12, 8, -10]} intensity={0.35} />
-        <fog attach="fog" args={['#ffffff', 20, 65]} />
-        <Environment preset="forest" />
-
-        <Suspense fallback={<Html center style={{ color: '#17212e', fontSize: '1.1rem' }}>Loading Jeep Wrangler...</Html>}>
-          <Physics gravity={[0, -30, 0]} broadphase="SAP" defaultContactMaterial={{ friction: 0.8, restitution: 0.1 }}>
-            <GroundPlane />
-            <WorldBoundary args={[80, 2, 1]} position={[0, 1, -40]} rotation={[0, 0, 0]} />
-            <WorldBoundary args={[80, 2, 1]} position={[0, 1, 40]} rotation={[0, 0, 0]} />
-            <WorldBoundary args={[1, 2, 80]} position={[-40, 1, 0]} rotation={[0, 0, 0]} />
-            <WorldBoundary args={[1, 2, 80]} position={[40, 1, 0]} rotation={[0, 0, 0]} />
-            <StaticBuilding position={[-14, 1.75, -8]} args={[14, 3.5, 10]} label="Contacts" />
-            <ParkingSign position={[8, 1, -6]} label="Parking" />
-            <ParkingZone center={[8, 0, -6]} radius={3} />
-            <Vehicle controls={controls} onParkedChange={setParked} setTargetRef={setTargetRef} />
-            <ContactShadows position={[0, -0.01, 0]} opacity={0.5} blur={2.5} far={6} />
-          </Physics>
-        </Suspense>
-
-        <ThirdPersonCamera targetRef={targetRef} />
-        <OrbitControls makeDefault enabled={parked} minDistance={4} maxDistance={25} maxPolarAngle={Math.PI / 2 - 0.25} />
-      </Canvas>
-    </div>
-  )
-}
-

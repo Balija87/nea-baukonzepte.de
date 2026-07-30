@@ -3,10 +3,14 @@
   position: relative;
   padding: 7px 0 7px 15px;
   border-left: 2px solid #f0a154;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  text-align: left;
 }
 
 .brand strong {
-  font: 700 1.18rem/1 'Space Grotesk', sans-serif;
+  font: 700 1.18rem/1.2 'Space Grotesk', sans-serif;
   letter-spacing: -0.055em;
   text-transform: uppercase;
 }
@@ -18,20 +22,25 @@
 }
 
 .brand span {
-  margin-top: 7px;
+  margin-top: 4px;
   color: #b8c8d9;
-  font-size: 0.61rem;
+  font-size: 0.65rem;
   font-weight: 800;
   letter-spacing: 0.11em;
   text-transform: uppercase;
 }
 
-@media (max-width: 460px) {
+@media (max-width: 768px) {
   .brand {
-    max-width: 48%;
-    padding-left: 10px;
+    align-items: center;
+    text-align: center;
+    border-left: 0;
+    border-bottom: 2px solid #f0a154;
+    padding: 0 0 10px 0;
   }
+}
 
-  .brand strong { font-size: 1rem; }
-  .brand span { font-size: 0.52rem; letter-spacing: 0.07em; }
+@media (max-width: 480px) {
+  .brand strong { font-size: 1.1rem; }
+  .brand span { font-size: 0.6rem; }
 }
